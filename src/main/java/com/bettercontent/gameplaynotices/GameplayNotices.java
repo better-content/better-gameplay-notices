@@ -1,4 +1,4 @@
-package com.bettercontent.notifications;
+package com.bettercontent.gameplaynotices;
 
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.PacketDistributor;

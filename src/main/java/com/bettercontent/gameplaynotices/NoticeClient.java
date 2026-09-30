@@ -1,4 +1,4 @@
-package com.bettercontent.notifications;
+package com.bettercontent.gameplaynotices;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Minecraft;
@@ -12,7 +12,7 @@ import net.minecraftforge.client.event.RenderGuiEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
-@Mod.EventBusSubscriber(modid = BetterContentNotifications.MOD_ID, value = Dist.CLIENT)
+@Mod.EventBusSubscriber(modid = BetterGameplayNotices.MOD_ID, value = Dist.CLIENT)
 public final class NoticeClient {
     private static final int THREAD_GOLD = 0xC6A15B;
     private static final int COMBAT_RED = 0xC73E42;

@@ -1,4 +1,4 @@
-package com.bettercontent.notifications;
+package com.bettercontent.gameplaynotices;
 
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
@@ -9,7 +9,7 @@ import net.minecraftforge.network.simple.SimpleChannel;
 final class NoticeNetwork {
     private static final String VERSION = "1";
     static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
-            new ResourceLocation(BetterContentNotifications.MOD_ID, "notices"),
+            new ResourceLocation(BetterGameplayNotices.MOD_ID, "notices"),
             () -> VERSION, VERSION::equals, VERSION::equals);
 
     private NoticeNetwork() {}

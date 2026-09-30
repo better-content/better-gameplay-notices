@@ -1,4 +1,4 @@
-package com.bettercontent.notifications;
+package com.bettercontent.gameplaynotices;
 
 import java.util.ArrayDeque;
 import java.util.Deque;

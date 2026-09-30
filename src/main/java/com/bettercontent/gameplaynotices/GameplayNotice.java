@@ -1,4 +1,4 @@
-package com.bettercontent.notifications;
+package com.bettercontent.gameplaynotices;
 
 import java.util.Objects;
 import net.minecraft.network.chat.Component;

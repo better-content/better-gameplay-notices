@@ -5,4 +5,4 @@ pluginManagement {
         mavenCentral()
     }
 }
-rootProject.name = "better-content-notifications"
+rootProject.name = "better-gameplay-notices"
