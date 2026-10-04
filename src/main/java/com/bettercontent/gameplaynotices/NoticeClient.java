@@ -55,11 +55,11 @@ public final class NoticeClient {
 
     private static void renderNotice(GuiGraphics graphics, GameplayNotice notice, long elapsed,
             int screenWidth, int screenHeight) {
-        float alpha = alpha(elapsed);
+        float alpha = alpha(elapsed, NoticeQueue.duration(notice));
         int centerX = screenWidth / 2;
         int centerY = screenHeight / 3;
         boolean combat = notice.theme() == NoticeTheme.COMBAT;
-        particles(graphics, notice.identity().hashCode(), elapsed, alpha,
+        particles(graphics, notice.identity().hashCode(), elapsed, NoticeQueue.duration(notice), alpha,
                 centerX, centerY - 5, notice.accentRgb(),
                 combat ? COMBAT_DARK : THREAD_GOLD);
         glyph(graphics, centerX - 4, centerY - 8, combat, alpha);
@@ -72,10 +72,10 @@ public final class NoticeClient {
                 alpha * 0.82f, combat ? 0xE98185 : 0xFFFFFF, combat ? 0x110307 : 0x000000);
     }
 
-    static float alpha(long elapsed) {
+    static float alpha(long elapsed, long duration) {
         if (elapsed < 400) return elapsed / 400.0f;
-        if (elapsed < 2_600) return 1.0f;
-        return Math.max(0, (NoticeQueue.DURATION_MS - elapsed) / 600.0f);
+        if (elapsed < duration - 600) return 1.0f;
+        return Math.max(0, (duration - elapsed) / 600.0f);
     }
 
     private static void glyph(GuiGraphics graphics, int x, int y, boolean combat, float alpha) {
@@ -106,9 +106,9 @@ public final class NoticeClient {
         pose.popPose();
     }
 
-    private static void particles(GuiGraphics graphics, int seed, long elapsed, float alpha,
+    private static void particles(GuiGraphics graphics, int seed, long elapsed, long duration, float alpha,
             int centerX, int centerY, int primary, int secondary) {
-        double progress = elapsed / (double) NoticeQueue.DURATION_MS;
+        double progress = elapsed / (double) duration;
         for (int i = 0; i < 20; i++) {
             int mixed = mix(seed + i * 0x9E3779B9);
             double angle = ((mixed & 0xFFFF) / 65535.0) * Math.PI * 2;

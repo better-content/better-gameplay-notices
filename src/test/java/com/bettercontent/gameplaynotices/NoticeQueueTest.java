@@ -21,10 +21,23 @@ final class NoticeQueueTest {
         queue.add(combat);
         assertTrue(queue.advance(0).started());
         assertEquals(thread, queue.advance(300).notice());
-        assertNull(queue.advance(NoticeQueue.DURATION_MS));
+        assertEquals(thread, queue.advance(NoticeQueue.COMBAT_DURATION_MS).notice());
+        assertNull(queue.advance(NoticeQueue.THREAD_DURATION_MS));
+        assertEquals(combat, queue.advance(0).notice());
+        assertEquals(combat, queue.advance(NoticeQueue.COMBAT_DURATION_MS - 1).notice());
+        assertNull(queue.advance(1));
+        queue.add(combat);
         assertEquals(combat, queue.advance(0).notice());
         assertFalse(queue.advance(1).started());
         queue.clear();
         assertNull(queue.advance(0));
+    }
+
+    @Test
+    void fadeTracksEachThemeDuration() {
+        assertEquals(1.0f, NoticeClient.alpha(7_399, NoticeQueue.THREAD_DURATION_MS));
+        assertEquals(0.5f, NoticeClient.alpha(7_700, NoticeQueue.THREAD_DURATION_MS));
+        assertEquals(0.0f, NoticeClient.alpha(8_000, NoticeQueue.THREAD_DURATION_MS));
+        assertEquals(0.5f, NoticeClient.alpha(2_900, NoticeQueue.COMBAT_DURATION_MS));
     }
 }

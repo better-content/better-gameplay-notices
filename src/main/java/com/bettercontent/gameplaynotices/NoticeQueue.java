@@ -4,7 +4,11 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 
 final class NoticeQueue {
-    static final long DURATION_MS = 3_200L;
+    static final long COMBAT_DURATION_MS = 3_200L;
+    static final long THREAD_DURATION_MS = 8_000L;
+    static long duration(GameplayNotice notice) {
+        return notice.theme() == NoticeTheme.THREADS ? THREAD_DURATION_MS : COMBAT_DURATION_MS;
+    }
     record Frame(GameplayNotice notice, long elapsedMs, boolean started) {}
 
     private final Deque<GameplayNotice> queue = new ArrayDeque<>();
@@ -21,8 +25,9 @@ final class NoticeQueue {
         if (queue.isEmpty()) return null;
         boolean started = !announced;
         announced = true;
-        elapsedMs = Math.min(DURATION_MS, elapsedMs + Math.max(0L, deltaMs));
-        if (elapsedMs >= DURATION_MS) {
+        long duration = duration(queue.getFirst());
+        elapsedMs = Math.min(duration, elapsedMs + Math.max(0L, deltaMs));
+        if (elapsedMs >= duration) {
             queue.removeFirst();
             elapsedMs = 0L;
             announced = false;
