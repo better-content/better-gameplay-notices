@@ -15,12 +15,17 @@ public final class BetterGameplayNotices {
     public BetterGameplayNotices() {
         NoticeNetwork.register();
         PLAYTEST.status("common", ModList.get().getModContainerById(MOD_ID)
-                .map(mod -> mod.getModInfo().getVersion().toString()).orElse("UNKNOWN"), "UNKNOWN",
+                .map(mod -> mod.getModInfo().getVersion().toString()).orElse("UNKNOWN"), source(),
                 () -> PlaytestLog.fields("enabled", true, "network_protocol", 1));
         MinecraftForge.EVENT_BUS.addListener(BetterGameplayNotices::serverTick);
         MinecraftForge.EVENT_BUS.addListener(BetterGameplayNotices::serverStopped);
     }
 
+    private static String source() {
+        var file = ModList.get().getModFileById(MOD_ID);
+        return PLAYTEST.sourceIdentity(file == null || file.getFile() == null ? (java.nio.file.Path) null
+                : file.getFile().findResource("META-INF", "better-content-source.properties"));
+    }
     private static void serverTick(TickEvent.ServerTickEvent event) {
         if (event.phase == TickEvent.Phase.END && PLAYTEST.enabled("summary")) PLAYTEST.summary("server");
     }
