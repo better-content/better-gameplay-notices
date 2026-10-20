@@ -1,5 +1,6 @@
 package com.bettercontent.gameplaynotices;
 
+import com.bettercontent.gameplaynotices.diagnostics.PlaytestLog;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -9,6 +10,7 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
 import net.minecraftforge.client.event.RenderGuiEvent;
+import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
@@ -23,12 +25,24 @@ public final class NoticeClient {
     private NoticeClient() {}
 
     static void receive(GameplayNotice notice) {
+        if (BetterGameplayNotices.PLAYTEST.enabled("delivery")) {
+            BetterGameplayNotices.PLAYTEST.event("delivery", "notice.received", "client", "received", "main_thread_dispatch",
+                    () -> PlaytestLog.fields("theme", notice.theme()));
+        }
         QUEUE.add(notice);
+    }
+
+    @SubscribeEvent
+    public static void tick(TickEvent.ClientTickEvent event) {
+        if (event.phase == TickEvent.Phase.END && BetterGameplayNotices.PLAYTEST.enabled("summary")) {
+            BetterGameplayNotices.PLAYTEST.summary("client");
+        }
     }
 
     @SubscribeEvent
     public static void logout(ClientPlayerNetworkEvent.LoggingOut event) {
         QUEUE.clear();
+        BetterGameplayNotices.PLAYTEST.reset("client");
         lastLiveFrame = 0;
     }
 
@@ -48,6 +62,10 @@ public final class NoticeClient {
             minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.BOOK_PAGE_TURN,
                     frame.notice().theme() == NoticeTheme.THREADS ? 0.72f : 0.60f,
                     frame.notice().theme() == NoticeTheme.THREADS ? 0.38f : 0.64f));
+            if (BetterGameplayNotices.PLAYTEST.enabled("presentation")) {
+                BetterGameplayNotices.PLAYTEST.event("presentation", "notice.started", "client", "submitted", "first_frame_sound_submitted",
+                        () -> PlaytestLog.fields("theme", frame.notice().theme(), "queued", QUEUE.size()));
+            }
         }
         renderNotice(event.getGuiGraphics(), frame.notice(), frame.elapsedMs(),
                 event.getWindow().getGuiScaledWidth(), event.getWindow().getGuiScaledHeight());

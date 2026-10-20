@@ -1,5 +1,6 @@
 package com.bettercontent.gameplaynotices;
 
+import com.bettercontent.gameplaynotices.diagnostics.PlaytestLog;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.PacketDistributor;
 
@@ -9,5 +10,9 @@ public final class GameplayNotices {
 
     public static void send(ServerPlayer player, GameplayNotice notice) {
         NoticeNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), notice);
+        if (BetterGameplayNotices.PLAYTEST.enabled("delivery")) {
+            BetterGameplayNotices.PLAYTEST.event("delivery", "notice.sent", "server", "submitted", "channel_send_returned",
+                    () -> PlaytestLog.fields("theme", notice.theme()));
+        }
     }
 }
