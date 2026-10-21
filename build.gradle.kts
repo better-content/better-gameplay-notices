@@ -1,3 +1,6 @@
+import java.nio.file.Files
+import java.util.UUID
+
 plugins {
     id("net.minecraftforge.gradle") version "6.0.54"
     jacoco
@@ -49,6 +52,23 @@ tasks.processResources {
     inputs.properties(props)
     filesMatching(listOf("META-INF/mods.toml", "pack.mcmeta")) { expand(props) }
 }
-tasks.withType<Test>().configureEach { useJUnitPlatform() }
+tasks.withType<Test>().configureEach {
+    useJUnitPlatform()
+    // JVM-only logger output belongs to retained build outputs, never the source root/run/.
+    val testWork = project.layout.buildDirectory.dir("test-work/${name}/${UUID.randomUUID()}")
+    workingDir(testWork.get().asFile)
+    outputs.dir(testWork).withPropertyName("isolatedTestWorkerDirectory")
+    doFirst {
+        val directory = testWork.get().asFile.toPath()
+        generateSequence(directory) { it.parent }.forEach { ancestor ->
+            check(!Files.isSymbolicLink(ancestor)) { "Symlink in JVM test working directory: $ancestor" }
+        }
+        Files.createDirectories(directory)
+        check(Files.list(directory).use { !it.findAny().isPresent }) {
+            "Fresh JVM test working directory contains unexpected input: $directory"
+        }
+        logger.lifecycle("BC_JVM_TEST_WORK task={} cwd={}", path, directory)
+    }
+}
 tasks.register("verifyFast") { group = "verification"; dependsOn(tasks.named("check")) }
 tasks.withType<JavaCompile>().configureEach { options.release.set(17) }

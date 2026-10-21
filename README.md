@@ -10,6 +10,17 @@ A small Forge 1.20.1 mod providing one queued, input-transparent gameplay notice
 Feature mods publish localized notices through `GameplayNotices.send` and choose the Threads
 or Combat theme. The queue pauses while another screen is open and clears on logout.
 
+## JVM test output ownership
+
+`./gradlew verifyFast stageRuntimeJar` retains the same JUnit discovery/assertions. Each Gradle
+Test worker uses a fresh registered `build/test-work/<task>/<UUID>/` working directory, printed
+as `BC_JVM_TEST_WORK`; relative loader/log4j files stay there, not in repository-root `logs/`.
+These are JVM test outputs, not Native/client presentation evidence. Preserve the whole prior
+build and its test working directories under the shared retention policy before clean/rebuild.
+Ordinary Forge `run/`, operator configurations and log levels are unchanged. Historical task-owned
+root test logs were separately classified and atomically archived with original-path/hash/context
+receipts in the logging task evidence; the old dirty/precommit provider qualification is unchanged.
+
 ## Bounded playtest diagnostics
 
 `bc.playtest.better_gameplay_notices.*` uses loader-provided SLF4J. INFO reports startup;
