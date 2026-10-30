@@ -16,7 +16,7 @@ public final class BetterGameplayNotices {
         NoticeNetwork.register();
         PLAYTEST.status("common", ModList.get().getModContainerById(MOD_ID)
                 .map(mod -> mod.getModInfo().getVersion().toString()).orElse("UNKNOWN"), source(),
-                () -> PlaytestLog.fields("enabled", true, "network_protocol", 1));
+                () -> PlaytestLog.fields("enabled", true, "network_protocol", 2));
         MinecraftForge.EVENT_BUS.addListener(BetterGameplayNotices::serverTick);
         MinecraftForge.EVENT_BUS.addListener(BetterGameplayNotices::serverStopped);
     }

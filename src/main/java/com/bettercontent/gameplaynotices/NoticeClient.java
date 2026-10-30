@@ -2,6 +2,7 @@ package com.bettercontent.gameplaynotices;
 
 import com.bettercontent.gameplaynotices.diagnostics.PlaytestLog;
 import com.mojang.blaze3d.vertex.PoseStack;
+import java.util.function.BooleanSupplier;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
@@ -19,10 +20,36 @@ public final class NoticeClient {
     private static final int THREAD_GOLD = 0xC6A15B;
     private static final int COMBAT_RED = 0xC73E42;
     private static final int COMBAT_DARK = 0x2A080D;
+    private static final int TRACE_COOL = 0xB8D4DD;
+    private record Treatment(int secondary, int title, int hint, int outline, float pitch, float volume) {}
+
+    private static Treatment treatment(NoticeTheme theme) {
+        return switch (theme) {
+            case THREADS -> new Treatment(THREAD_GOLD, 0xFFFFFF, 0xFFFFFF, 0x000000, 0.72f, 0.38f);
+            case COMBAT -> new Treatment(COMBAT_DARK, 0xF5B7B7, 0xE98185, 0x110307, 0.60f, 0.64f);
+            case TRACES -> new Treatment(TRACE_COOL, 0xE4EFF2, 0xB8D4DD, 0x071014, 0.82f, 0.24f);
+        };
+    }
     private static final NoticeQueue QUEUE = new NoticeQueue();
     private static long lastLiveFrame;
 
     private NoticeClient() {}
+
+    /**
+     * Client-thread-only, local ephemeral presentation; never serialized. Replaces the one transient slot,
+     * including a matching key, with a fresh presentation. Pending work expires after five monotonic seconds.
+     * The validity predicate is polled while pending/visible (including hidden HUD); onShown runs once on
+     * first presentation, not admission. Discovery notices have priority and discard transients without replay.
+     * Callers should submit on state changes, not every tick. Neither callback should block or throw.
+     */
+    public static void submitTransient(String key, GameplayNotice notice, BooleanSupplier valid, Runnable onShown) {
+        QUEUE.submitTransient(key, notice, valid, onShown);
+    }
+
+    /** Client-thread-only cancellation. A different key cannot cancel the current transient. */
+    public static void cancelTransient(String key) {
+        QUEUE.cancelTransient(key);
+    }
 
     static void receive(GameplayNotice notice) {
         if (BetterGameplayNotices.PLAYTEST.enabled("delivery")) {
@@ -34,8 +61,9 @@ public final class NoticeClient {
 
     @SubscribeEvent
     public static void tick(TickEvent.ClientTickEvent event) {
-        if (event.phase == TickEvent.Phase.END && BetterGameplayNotices.PLAYTEST.enabled("summary")) {
-            BetterGameplayNotices.PLAYTEST.summary("client");
+        if (event.phase == TickEvent.Phase.END) {
+            QUEUE.maintainTransient();
+            if (BetterGameplayNotices.PLAYTEST.enabled("summary")) BetterGameplayNotices.PLAYTEST.summary("client");
         }
     }
 
@@ -59,9 +87,9 @@ public final class NoticeClient {
         var frame = QUEUE.advance(delta);
         if (frame == null) return;
         if (frame.started()) {
+            var treatment = treatment(frame.notice().theme());
             minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.BOOK_PAGE_TURN,
-                    frame.notice().theme() == NoticeTheme.THREADS ? 0.72f : 0.60f,
-                    frame.notice().theme() == NoticeTheme.THREADS ? 0.38f : 0.64f));
+                    treatment.pitch(), treatment.volume()));
             if (BetterGameplayNotices.PLAYTEST.enabled("presentation")) {
                 BetterGameplayNotices.PLAYTEST.event("presentation", "notice.started", "client", "submitted", "first_frame_sound_submitted",
                         () -> PlaytestLog.fields("theme", frame.notice().theme(), "queued", QUEUE.size()));
@@ -76,18 +104,18 @@ public final class NoticeClient {
         float alpha = alpha(elapsed, NoticeQueue.duration(notice));
         int centerX = screenWidth / 2;
         int centerY = screenHeight / 3;
-        boolean combat = notice.theme() == NoticeTheme.COMBAT;
+        var treatment = treatment(notice.theme());
         particles(graphics, notice.identity().hashCode(), elapsed, NoticeQueue.duration(notice), alpha,
                 centerX, centerY - 5, notice.accentRgb(),
-                combat ? COMBAT_DARK : THREAD_GOLD);
-        glyph(graphics, centerX - 4, centerY - 8, combat, alpha);
+                treatment.secondary());
+        glyph(graphics, centerX - 4, centerY - 8, notice.theme(), alpha);
         drawText(graphics, notice.title(), centerX, centerY + 2,
                 Math.max(0.55f, Math.min(0.72f,
                         (screenWidth - 24.0f) / Math.max(1, Minecraft.getInstance().font.width(notice.title())))),
-                alpha, combat ? 0xF5B7B7 : 0xFFFFFF, combat ? 0x110307 : 0x000000);
+                alpha, treatment.title(), treatment.outline());
         drawText(graphics, notice.hint(), centerX, centerY + 10,
                 Math.min(0.58f, (screenWidth - 24.0f) / Math.max(1, Minecraft.getInstance().font.width(notice.hint()))),
-                alpha * 0.82f, combat ? 0xE98185 : 0xFFFFFF, combat ? 0x110307 : 0x000000);
+                alpha * 0.82f, treatment.hint(), treatment.outline());
     }
 
     static float alpha(long elapsed, long duration) {
@@ -96,12 +124,21 @@ public final class NoticeClient {
         return Math.max(0, (duration - elapsed) / 600.0f);
     }
 
-    private static void glyph(GuiGraphics graphics, int x, int y, boolean combat, float alpha) {
-        int[][] rows = combat
-                ? new int[][] {{0, 7}, {1, 6}, {2, 5}, {3, 4}, {3, 4}, {2, 5}, {1, 6}, {0, 7}}
-                : new int[][] {{3, 4}, {2, 5}, {1, 3, 4, 6}, {0, 2, 5, 7},
-                        {0, 2, 5, 7}, {1, 3, 4, 6}, {2, 5}, {3, 4}};
-        int color = (Math.round(alpha * 255) << 24) | (combat ? COMBAT_RED : THREAD_GOLD);
+    private static void glyph(GuiGraphics graphics, int x, int y, NoticeTheme theme, float alpha) {
+        int[][] rows = switch (theme) {
+            case COMBAT -> new int[][] {{0, 7}, {1, 6}, {2, 5}, {3, 4}, {3, 4}, {2, 5}, {1, 6}, {0, 7}};
+            case THREADS -> new int[][] {{3, 4}, {2, 5}, {1, 3, 4, 6}, {0, 2, 5, 7},
+                    {0, 2, 5, 7}, {1, 3, 4, 6}, {2, 5}, {3, 4}};
+            // Two small staggered soles/toes, not the discovery or crossed-combat glyph.
+            case TRACES -> new int[][] {{1, 2}, {0, 1, 2}, {0, 1, 2}, {1, 2, 5, 6},
+                    {5, 6, 7}, {5, 6, 7}, {1, 2, 5, 6}, {}};
+        };
+        int rgb = switch (theme) {
+            case THREADS -> THREAD_GOLD;
+            case COMBAT -> COMBAT_RED;
+            case TRACES -> TRACE_COOL;
+        };
+        int color = (Math.round(alpha * 255) << 24) | rgb;
         for (int py = 0; py < rows.length; py++) {
             for (int px : rows[py]) graphics.fill(x + px, y + py, x + px + 1, y + py + 1, color);
         }

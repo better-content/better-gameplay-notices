@@ -38,6 +38,15 @@ dependencies {
 }
 
 tasks.named<Jar>("jar") { finalizedBy("reobfJar") }
+// Explicit nonshipping provider for sibling mapped runClient/runServer qualification.
+// The canonical assemble/stageRuntimeJar artifact remains reobfuscated for production.
+val mappedDevJar by tasks.registering(Jar::class) {
+    group = "build"
+    description = "Packages official-mapped classes for local development only; never deploy this JAR."
+    archiveClassifier.set("dev")
+    from(sourceSets.main.get().output)
+    dependsOn(tasks.named("classes"))
+}
 val stageRuntimeJar by tasks.registering(Copy::class) {
     dependsOn(tasks.named("reobfJar"))
     from(layout.buildDirectory.file("reobfJar/output.jar"))
