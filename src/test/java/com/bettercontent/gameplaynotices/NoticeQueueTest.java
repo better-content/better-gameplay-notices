@@ -85,13 +85,14 @@ final class NoticeQueueTest {
     }
 
     @Test
-    void newThemesHaveDistinctStylesAndSurviveTheNetworkCodec() {
+    void everyShippedThemeSurvivesTheNetworkCodecAndQueue() {
         var queue = new NoticeQueue();
-        for (var theme : List.of(NoticeTheme.SPAWN, NoticeTheme.LIFE)) {
+        for (var theme : NoticeTheme.values()) {
             var style = NoticeStyle.forTheme(theme);
             var original = new GameplayNotice("guidance:" + theme, theme,
                     Component.literal("Title"), Component.literal("Hint"));
-            assertEquals(8_000L, style.durationMs());
+            assertEquals(theme == NoticeTheme.COMBAT || theme == NoticeTheme.TRACES ? 3_200L : 8_000L,
+                    style.durationMs());
             assertEquals(style.accent(), original.accentRgb());
             assertEquals(8, style.glyph().length);
             var bytes = new FriendlyByteBuf(Unpooled.buffer());
@@ -108,7 +109,7 @@ final class NoticeQueueTest {
                 bytes.release();
             }
         }
-        assertEquals(2, queue.size());
+        assertEquals(NoticeTheme.values().length, queue.size());
         assertFalse(NoticeStyle.forTheme(NoticeTheme.SPAWN).accent() == NoticeStyle.forTheme(NoticeTheme.LIFE).accent());
     }
 
